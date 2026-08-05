@@ -1,0 +1,11 @@
+node_modules
+.next
+*.db
+*.db-journal
+.DS_Store
+
+.vercel
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat
