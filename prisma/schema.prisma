@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// SQLite for zero-config local demo. For production, switch to:
+// provider = "postgresql"
+// and set DATABASE_URL to your Neon/Supabase connection string.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Clinic {
+  id          String   @id @default(cuid())
+  name        String
+  tagline     String?
+  email       String
+  phone       String
+  address     String
+  city        String
+  mapsUrl     String?
+  timezone    String   @default("Asia/Manila")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  services      Service[]
+  doctors       Doctor[]
+  weeklyHours   WeeklyHour[]
+  exceptions    AvailabilityException[]
+  appointments  Appointment[]
+  adminUsers    AdminUser[]
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  durationMin Int
+  pricePhp    Int?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  doctors     DoctorService[]
+  appointments Appointment[]
+}
+
+model Doctor {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name        String
+  title       String?
+  bio         String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  services    DoctorService[]
+  appointments Appointment[]
+}
+
+model DoctorService {
+  doctorId  String
+  serviceId String
+  doctor    Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([doctorId, serviceId])
+}
+
+model WeeklyHour {
+  id        String @id @default(cuid())
+  clinicId  String
+  clinic    Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  /// 0 = Sunday ... 6 = Saturday
+  dayOfWeek Int
+  startMin  Int
+  endMin    Int
+  closed    Boolean @default(false)
+
+  @@unique([clinicId, dayOfWeek])
+}
+
+model AvailabilityException {
+  id       String   @id @default(cuid())
+  clinicId String
+  clinic   Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  date     DateTime
+  reason   String?
+  closed   Boolean  @default(true)
+}
+
+/// PENDING | CONFIRMED | CANCELLED | COMPLETED (string for SQLite; use enum on Postgres)
+model Appointment {
+  id           String   @id @default(cuid())
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  serviceId    String
+  service      Service  @relation(fields: [serviceId], references: [id])
+  doctorId     String
+  doctor       Doctor   @relation(fields: [doctorId], references: [id])
+  startAt      DateTime
+  endAt        DateTime
+  status       String   @default("PENDING")
+  patientName  String
+  patientEmail String
+  patientPhone String
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clinicId, startAt])
+  @@index([doctorId, startAt])
+}
